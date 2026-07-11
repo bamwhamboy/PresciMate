@@ -40,7 +40,12 @@ OCR_PROVIDER = _get_secret("OCR_PROVIDER", "claude")
 CHAT_PROVIDER = _get_secret("CHAT_PROVIDER", "claude")
 
 OCR_MODEL = _get_secret("OCR_MODEL", "claude-sonnet-5")      # used when OCR_PROVIDER=claude
-GEMINI_MODEL = _get_secret("GEMINI_MODEL", "gemini-2.5-flash")  # used when OCR_PROVIDER or CHAT_PROVIDER=gemini
+GEMINI_MODEL = _get_secret("GEMINI_MODEL", "gemini-3.1-flash-lite")  # used when OCR_PROVIDER or CHAT_PROVIDER=gemini
+# Google's Gemini model names churn frequently - gemini-2.5-flash, the
+# original default here, was deprecated for new users within weeks of
+# being set. If this stops working, check the current list at
+# ai.google.dev/gemini-api/docs/models and set GEMINI_MODEL in your
+# .env/secrets.toml, no code change needed.
 CHAT_MODEL = _get_secret("CHAT_MODEL", "claude-sonnet-5")  # used when CHAT_PROVIDER=claude
 
 # Knowledge base paths - must match what build_knowledge_base.ipynb created
