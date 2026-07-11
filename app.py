@@ -117,7 +117,20 @@ with tab_upload:
                     answer = sarvam_translator.translate(config.EMERGENCY_MESSAGE, language_code)
                     st.error(answer)
                 else:
-                    drug_context = "\n\n".join(kb.search_drug_knowledge(m["name"]) for m in result["medicines"])
+                    # include what was actually extracted from THIS
+                    # prescription (dosage, frequency, etc.), not just
+                    # general info about the drug - otherwise questions
+                    # like "what's the dosage" have no answer to draw on
+                    prescription_details = "\n".join(
+                        f"{m['name']}: dosage={m.get('dosage') or 'not specified'}, "
+                        f"frequency={m.get('frequency') or 'not specified'}, "
+                        f"duration={m.get('duration') or 'not specified'}, "
+                        f"instructions={m.get('instructions') or 'not specified'}"
+                        for m in result["medicines"]
+                    )
+                    general_context = "\n\n".join(kb.search_drug_knowledge(m["name"]) for m in result["medicines"])
+                    drug_context = f"From this prescription:\n{prescription_details}\n\nGeneral drug info:\n{general_context}"
+
                     with st.spinner("Thinking..."):
                         answer_en = explain.answer_question(question, drug_context)
                         answer = sarvam_translator.translate(answer_en, language_code)
