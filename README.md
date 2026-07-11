@@ -80,17 +80,13 @@ prompts in `explain.py` instead of a separate layer.
    #   for either OCR_PROVIDER or CHAT_PROVIDER
    ```
 
-4. **Add a user:**
-   ```bash
-   cp users.example.yaml users.yaml
-   python3 -c "import bcrypt; print(bcrypt.hashpw(b'yourpassword', bcrypt.gensalt()).decode())"
-   # paste that hash into users.yaml under your username
-   ```
-
-5. **Run it:**
+4. **Run it:**
    ```bash
    streamlit run app.py
    ```
+   Use the **Sign up** tab on first launch to create your login - it
+   creates `users.yaml` automatically (bcrypt-hashed, gitignored) the
+   first time someone signs up. No manual hash generation needed.
 
 ## Files
 
@@ -108,8 +104,14 @@ prompts in `explain.py` instead of a separate layer.
 
 ## A couple of honest limitations
 
-- Login is a simple YAML file + bcrypt - fine for a handful of real
-  users, not built for self-serve signup at scale.
+- Sign-up is open to anyone who reaches the app - there's no invite code
+  or admin approval step. That solves the "creating a login was a
+  blocker" problem, but it means access control is really just "you
+  have the URL," not "you were invited." Each user's *data* stays
+  private from other users regardless (that's enforced by the Qdrant
+  username filter, not by who can sign up) - but if you want the app
+  itself restricted to specific people, you'd want to add an invite
+  code or pre-approved username list before opening this up publicly.
 - Follow-up questions get a simple keyword check (`config.EMERGENCY_KEYWORDS`)
   before anything goes to the LLM - if it matches, the question never
   reaches Claude and a fixed safety message is shown instead. It's a
