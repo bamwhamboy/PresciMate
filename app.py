@@ -32,8 +32,6 @@ with st.sidebar:
     language_code = config.LANGUAGES[language]["code"]
 
     st.divider()
-    st.caption(f"Reading prescriptions with: **{config.OCR_PROVIDER}**")
-    st.caption(f"Writing explanations with: **{config.CHAT_PROVIDER}**")
     if "gemini" in (config.OCR_PROVIDER, config.CHAT_PROVIDER):
         st.caption("⚠️ Free tier - Google may review this traffic. See README.")
 
