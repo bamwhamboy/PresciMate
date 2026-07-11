@@ -54,6 +54,24 @@ def _media_type(filename: str) -> str:
     )
 
 
+def _as_text(content) -> str:
+    """response.content from LangChain chat models isn't always a plain
+    string - it can come back as a list of content parts (each either a
+    string or a dict with a "text" key), especially from Gemini. This
+    normalizes either shape into one string before parsing."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, str):
+                parts.append(part)
+            elif isinstance(part, dict) and "text" in part:
+                parts.append(part["text"])
+        return "".join(parts)
+    return str(content)
+
+
 def _parse_response(raw_text: str) -> dict:
     text = raw_text.strip()
     text = re.sub(r"^```(json)?", "", text).strip()
@@ -81,7 +99,7 @@ def _extract_with_claude(image_bytes: bytes, filename: str) -> dict:
         {"type": "text", "text": PROMPT},
     ])
     response = llm.invoke([message])
-    return _parse_response(response.content)
+    return _parse_response(_as_text(response.content))
 
 
 def _extract_with_gemini(image_bytes: bytes, filename: str) -> dict:
@@ -99,7 +117,7 @@ def _extract_with_gemini(image_bytes: bytes, filename: str) -> dict:
         {"type": "text", "text": PROMPT},
     ])
     response = llm.invoke([message])
-    return _parse_response(response.content)
+    return _parse_response(_as_text(response.content))
 
 
 def extract_prescription(image_bytes: bytes, filename: str = "prescription.jpg") -> dict:
