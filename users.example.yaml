@@ -1,0 +1,7 @@
+# Copy this to users.yaml (which is gitignored) and add real users.
+# Generate a password hash with:
+#   python3 -c "import bcrypt; print(bcrypt.hashpw(b'yourpassword', bcrypt.gensalt()).decode())"
+users:
+  vijay:
+    name: Vijay
+    password_hash: "$2b$12$examplehashreplacethiswithrealone1234567890"

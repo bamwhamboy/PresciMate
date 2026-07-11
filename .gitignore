@@ -1,0 +1,10 @@
+.env
+users.yaml
+qdrant_data/
+prescribot.db
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+.DS_Store
