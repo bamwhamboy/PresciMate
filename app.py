@@ -16,8 +16,10 @@ import extraction
 import knowledge_base as kb
 import pdf_export
 import sarvam_translator
+import theme
 
 st.set_page_config(page_title="PresciMate", page_icon="💊", layout="wide")
+theme.apply()
 
 username, display_name = auth.require_login()
 
