@@ -13,8 +13,10 @@ import auth
 import config
 import explain
 import extraction
+import hallucination_guard
 import knowledge_base as kb
 import pdf_export
+import pii
 import sarvam_translator
 import theme
 
@@ -65,25 +67,45 @@ with tab_upload:
                 medicines = extracted["medicines"]
                 drug_names = [m["name"] for m in medicines]
 
+                # PII guardrail: strip the patient's name and redact any
+                # phone/email/ID numbers BEFORE anything goes to an
+                # external LLM provider or gets stored. The original
+                # (unsanitized) `medicines` is still used below for the
+                # on-screen display and the PDF, since those stay local
+                # to this user's own session/device.
+                safe = pii.sanitize_for_external(extracted)
+                safe_medicines = safe["medicines"]
+                pii_found = pii.scan_for_pii(str(extracted.get("notes", ""))) or any(
+                    pii.scan_for_pii(m.get("instructions") or "") for m in medicines
+                )
+
                 with st.spinner("Looking up the medicines and checking interactions..."):
                     drug_context = "\n\n".join(kb.search_drug_knowledge(name) for name in drug_names)
                     interactions = kb.check_interactions(drug_names)
 
                 with st.spinner("Writing the explanation..."):
-                    english_explanation = explain.write_explanation(medicines, drug_context, interactions)
+                    english_explanation = explain.write_explanation(safe_medicines, drug_context, interactions)
+
+                # Hallucination guardrail: check BEFORE translation, since
+                # the grounding check looks for English unit words (mg,
+                # days, times) - translating first would break the match.
+                grounding = hallucination_guard.check_grounding(english_explanation, safe_medicines, drug_context)
 
                 with st.spinner(f"Translating into {language}..."):
                     final_explanation = sarvam_translator.translate(english_explanation, language_code)
 
                 with st.spinner("Saving to your history..."):
-                    kb.save_prescription(username, medicines, final_explanation, language)
+                    kb.save_prescription(username, safe_medicines, final_explanation, language)
 
                 st.session_state["last_result"] = {
-                    "medicines": medicines,
+                    "medicines": medicines,          # original, for display + PDF
+                    "safe_medicines": safe_medicines,  # sanitized, for any further LLM calls
                     "explanation": final_explanation,
                     "interactions": interactions,
                     "language": language,
                     "low_confidence": extracted.get("low_confidence", False),
+                    "pii_found": pii_found,
+                    "grounding": grounding,
                 }
 
         result = st.session_state.get("last_result")
@@ -91,6 +113,17 @@ with tab_upload:
             with col2:
                 if result["low_confidence"]:
                     st.warning("Handwriting was hard to read in places - please double check against the original.")
+
+                if result.get("pii_found"):
+                    st.caption("🔒 Identifying details (name, phone, email, or ID numbers) were kept on your "
+                               "device only and removed before anything was sent to the AI or translation services.")
+
+                if result.get("grounding", {}).get("flagged"):
+                    st.warning(
+                        "⚠️ This explanation mentions specific numbers that don't appear on your prescription "
+                        "or in the reference material - double-check these with your doctor or pharmacist "
+                        "before relying on them: " + ", ".join(result["grounding"]["ungrounded_claims"])
+                    )
 
                 st.subheader("Medicines found")
                 for m in result["medicines"]:
@@ -128,14 +161,19 @@ with tab_upload:
                         f"frequency={m.get('frequency') or 'not specified'}, "
                         f"duration={m.get('duration') or 'not specified'}, "
                         f"instructions={m.get('instructions') or 'not specified'}"
-                        for m in result["medicines"]
+                        for m in result["safe_medicines"]
                     )
                     general_context = "\n\n".join(kb.search_drug_knowledge(m["name"]) for m in result["medicines"])
                     drug_context = f"From this prescription:\n{prescription_details}\n\nGeneral drug info:\n{general_context}"
 
                     with st.spinner("Thinking..."):
                         answer_en = explain.answer_question(question, drug_context)
+                        qa_grounding = hallucination_guard.check_grounding(answer_en, result["safe_medicines"], drug_context)
                         answer = sarvam_translator.translate(answer_en, language_code)
+                    if qa_grounding["flagged"]:
+                        st.caption("⚠️ This answer mentions numbers not found in your prescription or the "
+                                   "reference material - verify with your doctor or pharmacist: "
+                                   + ", ".join(qa_grounding["ungrounded_claims"]))
                     st.markdown(answer)
 
 # ------------------------------------------------------------------ #
