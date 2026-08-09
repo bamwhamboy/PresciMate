@@ -90,6 +90,11 @@ def signup(req: SignupRequest):
         token = jwt_auth.signup(req.name, req.username, req.password)
     except jwt_auth.AuthError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=_clean_error(e, "Something went wrong creating your account - please try again."),
+        )
     return AuthResponse(token=token, name=req.name, username=req.username)
 
 
@@ -99,6 +104,11 @@ def login(req: LoginRequest):
         token = jwt_auth.login(req.username, req.password)
     except jwt_auth.AuthError as e:
         raise HTTPException(status_code=401, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=_clean_error(e, "Something went wrong logging in - please try again."),
+        )
     identity = jwt_auth.verify_token(token)
     return AuthResponse(token=token, name=identity["name"], username=identity["username"])
 
