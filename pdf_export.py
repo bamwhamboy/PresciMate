@@ -154,15 +154,26 @@ def build_pdf(output_path: str, medicines: list[dict], explanation: str, languag
     )
     story = []
 
+    # Transliterate each name once up front - used both for the medicine
+    # cards below and for swapping names inside the explanation text
+    # further down, so this only needs to happen once per medicine.
+    medicines_local = [
+        {**m, "name_local": sarvam_translator.transliterate(m["name"], language_code)}
+        for m in medicines
+    ]
+
     # ---- Medicines section: each drug as its own card ----
     story.append(Paragraph(_tr("Your medicines", language_code), heading_style))
     story.append(HRFlowable(width="100%", thickness=1.2, color=_ACCENT, spaceAfter=10))
 
     not_specified = _tr("Dosage not specified - confirm with your doctor", language_code)
 
-    for m in medicines:
+    for m in medicines_local:
         # Dosage/frequency/duration values and instructions are
-        # translated - the brand/generic name (m["name"]) is not.
+        # translated - the brand/generic name (m["name"]) is not, but a
+        # transliterated version (m["name_local"]) is shown as the
+        # primary heading, with the original underneath for matching
+        # against the physical pill box - same treatment as the app.
         detail_bits = [m.get("dosage"), m.get("frequency"), m.get("duration")]
         translated_bits = [sarvam_translator.translate(b, language_code) for b in detail_bits if b]
         detail_line = "  \u2022  ".join(escape(b) for b in translated_bits) or not_specified
@@ -172,10 +183,14 @@ def build_pdf(output_path: str, medicines: list[dict], explanation: str, languag
             translated_instructions = sarvam_translator.translate(m["instructions"], language_code)
             instructions = f"<br/>{escape(translated_instructions)}"
 
-        card_content = [
-            Paragraph(escape(m["name"]), med_name_style),
-            Paragraph(detail_line + instructions, med_detail_style),
-        ]
+        has_local_name = m["name_local"] != m["name"]
+        card_content = [Paragraph(escape(m["name_local"] if has_local_name else m["name"]), med_name_style)]
+        if has_local_name:
+            card_content.append(
+                Paragraph(f"{escape(m['name'])} - as printed on your medicine", med_detail_style)
+            )
+        card_content.append(Paragraph(detail_line + instructions, med_detail_style))
+
         card = Table([[card_content]], colWidths=[doc.width])
         card.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), _CARD_BG),
@@ -194,8 +209,7 @@ def build_pdf(output_path: str, medicines: list[dict], explanation: str, languag
     story.append(Paragraph(_tr("What this means for you", language_code), heading_style))
     story.append(HRFlowable(width="100%", thickness=1.2, color=_ACCENT, spaceAfter=10))
 
-    medicine_names = [m["name"] for m in medicines]
-    explanation = formatting.bold_medicine_names(explanation, medicine_names)
+    explanation = formatting.apply_transliterated_names(explanation, medicines_local)
 
     for paragraph in explanation.split("\n\n"):
         if paragraph.strip():

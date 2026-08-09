@@ -129,8 +129,8 @@ export default function DashboardPage() {
   if (authLoading || !token) return null;
 
   return (
-    <div className="min-h-screen bg-paper">
-      <header className="bg-white border-b border-mist">
+    <div className="min-h-screen">
+      <header className="bg-white/70 backdrop-blur-md border-b border-mist/60">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="inline-block w-7 h-3.5 rounded-full bg-marigold relative" aria-hidden="true">

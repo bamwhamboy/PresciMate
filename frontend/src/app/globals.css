@@ -31,6 +31,20 @@ body {
   font-family: var(--font-body), sans-serif;
 }
 
+/* The main background treatment: a soft gradient wash (pharmacy green
+   from the top-left, marigold from the bottom-right) layered over a
+   faint repeating pattern of pill-capsule outlines. Kept subtle - the
+   torn-edge card is the one bold signature element in this design, so
+   this stays texture, not competition. */
+.app-background {
+  background-color: var(--color-paper);
+  background-image:
+    radial-gradient(ellipse 900px 700px at 0% 0%, rgba(28, 110, 92, 0.08), transparent 60%),
+    radial-gradient(ellipse 900px 700px at 100% 100%, rgba(232, 145, 45, 0.07), transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg transform='rotate(-18 60 60)' fill='none' stroke='%231C6E5C' stroke-width='1.4' opacity='0.09'%3E%3Crect x='14' y='48' width='34' height='15' rx='7.5'/%3E%3Cline x1='31' y1='48' x2='31' y2='63'/%3E%3Crect x='68' y='92' width='34' height='15' rx='7.5'/%3E%3Cline x1='85' y1='92' x2='85' y2='107'/%3E%3C/g%3E%3C/svg%3E");
+  background-attachment: fixed, fixed, fixed;
+}
+
 /* Signature element: a torn/perforated top edge on cards, evoking a
    sheet torn off a prescription pad. Used with restraint - card headers
    only, not on every box in the UI. */

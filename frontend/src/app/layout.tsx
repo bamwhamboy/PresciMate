@@ -39,7 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${fraunces.variable} ${inter.variable} ${plexMono.variable} antialiased`}
     >
-      <body className="min-h-screen flex flex-col bg-paper text-ink font-body">
+      <body className="min-h-screen flex flex-col app-background text-ink font-body">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

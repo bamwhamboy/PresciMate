@@ -1,24 +1,15 @@
 """
-Settings for PresciMate. Locally, everything reads from a .env file (copy
-.env.example to .env and fill it in). If this is deployed on Streamlit
-Community Cloud, .env files don't exist there - Streamlit uses its own
-Secrets manager instead - so _get_secret() checks st.secrets first and
-falls back to the local .env value.
+Settings for PresciMate. Everything reads from a .env file - copy
+.env.example to .env and fill it in.
 """
 import os
 
-import streamlit as st
 from dotenv import load_dotenv
 
 load_dotenv()
 
 
 def _get_secret(key: str, default: str = "") -> str:
-    try:
-        if key in st.secrets:
-            return st.secrets[key]
-    except Exception:
-        pass  # no secrets.toml / not running on Streamlit Cloud - that's fine locally
     return os.getenv(key, default)
 
 

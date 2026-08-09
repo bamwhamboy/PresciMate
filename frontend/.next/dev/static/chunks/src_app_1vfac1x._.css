@@ -108,6 +108,15 @@
       --tw-ring-offset-width: 0px;
       --tw-ring-offset-color: #fff;
       --tw-ring-offset-shadow: 0 0 #0000;
+      --tw-backdrop-blur: initial;
+      --tw-backdrop-brightness: initial;
+      --tw-backdrop-contrast: initial;
+      --tw-backdrop-grayscale: initial;
+      --tw-backdrop-hue-rotate: initial;
+      --tw-backdrop-invert: initial;
+      --tw-backdrop-opacity: initial;
+      --tw-backdrop-saturate: initial;
+      --tw-backdrop-sepia: initial;
       --tw-duration: initial;
       --tw-outline-style: solid;
       --tw-leading: initial;
@@ -143,6 +152,7 @@
     --leading-relaxed: 1.625;
     --radius-md: .375rem;
     --radius-lg: .5rem;
+    --blur-md: 12px;
     --default-transition-duration: .15s;
     --default-transition-timing-function: cubic-bezier(.4, 0, .2, 1);
     --default-font-family: var(--font-sans);
@@ -1365,6 +1375,16 @@
     border-color: var(--color-mist-dark);
   }
 
+  .border-mist\/60 {
+    border-color: var(--color-mist);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .border-mist\/60 {
+      border-color: color-mix(in oklab, var(--color-mist) 60%, transparent);
+    }
+  }
+
   .border-pharmacy {
     border-color: var(--color-pharmacy);
   }
@@ -1419,10 +1439,6 @@
     }
   }
 
-  .bg-paper {
-    background-color: var(--color-paper);
-  }
-
   .bg-pharmacy {
     background-color: var(--color-pharmacy);
   }
@@ -1433,6 +1449,16 @@
 
   .bg-white {
     background-color: var(--color-white);
+  }
+
+  .bg-white\/70 {
+    background-color: #ffffffb3;
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .bg-white\/70 {
+      background-color: color-mix(in oklab, var(--color-white) 70%, transparent);
+    }
   }
 
   .\!p-3 {
@@ -1652,6 +1678,12 @@
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
 
+  .backdrop-blur-md {
+    --tw-backdrop-blur: blur(var(--blur-md));
+    -webkit-backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+    backdrop-filter: var(--tw-backdrop-blur, ) var(--tw-backdrop-brightness, ) var(--tw-backdrop-contrast, ) var(--tw-backdrop-grayscale, ) var(--tw-backdrop-hue-rotate, ) var(--tw-backdrop-invert, ) var(--tw-backdrop-opacity, ) var(--tw-backdrop-saturate, ) var(--tw-backdrop-sepia, );
+  }
+
   .transition-colors {
     transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
@@ -1796,6 +1828,12 @@ body {
   font-family: var(--font-body), sans-serif;
 }
 
+.app-background {
+  background-color: var(--color-paper);
+  background-image: radial-gradient(900px 700px at 0 0, #1c6e5c14, #0000 60%), radial-gradient(900px 700px at 100% 100%, #e8912d12, #0000 60%), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg transform='rotate(-18 60 60)' fill='none' stroke='%231C6E5C' stroke-width='1.4' opacity='0.09'%3E%3Crect x='14' y='48' width='34' height='15' rx='7.5'/%3E%3Cline x1='31' y1='48' x2='31' y2='63'/%3E%3Crect x='68' y='92' width='34' height='15' rx='7.5'/%3E%3Cline x1='85' y1='92' x2='85' y2='107'/%3E%3C/g%3E%3C/svg%3E");
+  background-attachment: fixed, fixed, fixed;
+}
+
 .torn-edge {
   position: relative;
 }
@@ -1923,6 +1961,51 @@ body {
   syntax: "*";
   inherits: false;
   initial-value: 0 0 #0000;
+}
+
+@property --tw-backdrop-blur {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-backdrop-brightness {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-backdrop-contrast {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-backdrop-grayscale {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-backdrop-hue-rotate {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-backdrop-invert {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-backdrop-opacity {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-backdrop-saturate {
+  syntax: "*";
+  inherits: false
+}
+
+@property --tw-backdrop-sepia {
+  syntax: "*";
+  inherits: false
 }
 
 @property --tw-duration {
