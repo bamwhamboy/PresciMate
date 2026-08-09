@@ -16,6 +16,7 @@ from pydantic import BaseModel
 import config
 import explain
 import extraction
+import formatting
 import hallucination_guard
 import jwt_auth
 import knowledge_base as kb
@@ -25,12 +26,25 @@ import sarvam_translator
 
 app = FastAPI(title="PresciMate API")
 
+
+def _clean_error(e: Exception, fallback: str) -> str:
+    """Upstream API failures (Anthropic, Gemini, Sarvam) can surface raw
+    HTML error pages or long stack-trace-like strings in the exception
+    message - never show that directly to a patient. Logs the real error
+    server-side (visible in the uvicorn terminal) and returns a clean
+    message for the client instead."""
+    print(f"[error] {type(e).__name__}: {e}")  # full detail stays in the server log
+    raw = str(e)
+    if "<html" in raw.lower() or "<!doctype" in raw.lower() or len(raw) > 300:
+        return fallback
+    return raw
+
 # Next.js dev server + whatever production origin you deploy the
 # frontend to. Tighten this to your real domain before going live -
 # "*" during local development only.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "*"],
+    allow_origins=config.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -101,7 +115,10 @@ async def extract_prescription(
     try:
         extracted = extraction.extract_prescription(image_bytes, file.filename)
     except Exception as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(
+            status_code=422,
+            detail=_clean_error(e, "Couldn't read the prescription right now - please try again."),
+        )
     return extracted
 
 
@@ -116,25 +133,44 @@ def explain_prescription(req: ExplainRequest, user: dict = Depends(get_current_u
         raise HTTPException(status_code=400, detail=f"Unknown language: {req.language}")
     language_code = config.LANGUAGES[req.language]["code"]
 
-    drug_names = [m["name"] for m in req.medicines]
-    drug_context = "\n\n".join(kb.search_drug_knowledge(name) for name in drug_names)
-    interactions = kb.check_interactions(drug_names)
+    try:
+        drug_names = [m["name"] for m in req.medicines]
+        drug_context = "\n\n".join(kb.search_drug_knowledge(name) for name in drug_names)
+        interactions = kb.check_interactions(drug_names)
 
-    # PII guardrail - same as the Streamlit app: strip identifying
-    # details before anything reaches an external LLM or storage.
-    safe = pii.sanitize_for_external({"medicines": req.medicines})
-    safe_medicines = safe["medicines"]
+        # PII guardrail - same as the Streamlit app: strip identifying
+        # details before anything reaches an external LLM or storage.
+        safe = pii.sanitize_for_external({"medicines": req.medicines})
+        safe_medicines = safe["medicines"]
 
-    english_explanation = explain.write_explanation(safe_medicines, drug_context, interactions)
-    grounding = hallucination_guard.check_grounding(english_explanation, safe_medicines, drug_context)
-    final_explanation = sarvam_translator.translate(english_explanation, language_code)
+        english_explanation = explain.write_explanation(safe_medicines, drug_context, interactions)
+        grounding = hallucination_guard.check_grounding(english_explanation, safe_medicines, drug_context)
+        final_explanation = sarvam_translator.translate(english_explanation, language_code)
 
-    kb.save_prescription(user["username"], safe_medicines, final_explanation, req.language)
+        # Translate dosage/frequency/duration/instructions and add the
+        # transliterated name (name_local) for on-screen display - the
+        # untranslated "name" field is kept too, for matching against
+        # the physical pill box.
+        translated_medicines = formatting.translate_medicine_fields(req.medicines, language_code)
+
+        # Swap the medicine name for its transliterated + bolded form
+        # inside the explanation text itself, so it reads naturally in
+        # the target language rather than having an English name appear
+        # mid-sentence.
+        final_explanation = formatting.apply_transliterated_names(final_explanation, translated_medicines)
+
+        kb.save_prescription(user["username"], safe_medicines, final_explanation, req.language)
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail=_clean_error(e, "Couldn't write the explanation right now - please try again."),
+        )
 
     return {
         "explanation": final_explanation,
         "interactions": interactions,
         "grounding": grounding,
+        "translated_medicines": translated_medicines,
     }
 
 
@@ -157,22 +193,28 @@ def ask_question(req: AskRequest, user: dict = Depends(get_current_user)):
             "emergency": True,
         }
 
-    safe = pii.sanitize_for_external({"medicines": req.medicines})
-    safe_medicines = safe["medicines"]
+    try:
+        safe = pii.sanitize_for_external({"medicines": req.medicines})
+        safe_medicines = safe["medicines"]
 
-    prescription_details = "\n".join(
-        f"{m['name']}: dosage={m.get('dosage') or 'not specified'}, "
-        f"frequency={m.get('frequency') or 'not specified'}, "
-        f"duration={m.get('duration') or 'not specified'}, "
-        f"instructions={m.get('instructions') or 'not specified'}"
-        for m in safe_medicines
-    )
-    general_context = "\n\n".join(kb.search_drug_knowledge(m["name"]) for m in req.medicines)
-    drug_context = f"From this prescription:\n{prescription_details}\n\nGeneral drug info:\n{general_context}"
+        prescription_details = "\n".join(
+            f"{m['name']}: dosage={m.get('dosage') or 'not specified'}, "
+            f"frequency={m.get('frequency') or 'not specified'}, "
+            f"duration={m.get('duration') or 'not specified'}, "
+            f"instructions={m.get('instructions') or 'not specified'}"
+            for m in safe_medicines
+        )
+        general_context = "\n\n".join(kb.search_drug_knowledge(m["name"]) for m in req.medicines)
+        drug_context = f"From this prescription:\n{prescription_details}\n\nGeneral drug info:\n{general_context}"
 
-    answer_en = explain.answer_question(req.question, drug_context)
-    grounding = hallucination_guard.check_grounding(answer_en, safe_medicines, drug_context)
-    answer = sarvam_translator.translate(answer_en, language_code)
+        answer_en = explain.answer_question(req.question, drug_context)
+        grounding = hallucination_guard.check_grounding(answer_en, safe_medicines, drug_context)
+        answer = sarvam_translator.translate(answer_en, language_code)
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail=_clean_error(e, "Couldn't answer that right now - please try again."),
+        )
 
     return {"answer": answer, "grounding": grounding, "emergency": False}
 

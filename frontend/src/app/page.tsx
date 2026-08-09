@@ -191,7 +191,7 @@ export default function DashboardPage() {
               {extracted && extracted.medicines.length > 0 && (
                 <div className="space-y-3">
                   <h2 className="font-display font-semibold text-ink">Medicines found</h2>
-                  {extracted.medicines.map((m, i) => (
+                  {(result?.translated_medicines ?? extracted.medicines).map((m, i) => (
                     <MedicineCard key={i} medicine={m} />
                   ))}
                 </div>

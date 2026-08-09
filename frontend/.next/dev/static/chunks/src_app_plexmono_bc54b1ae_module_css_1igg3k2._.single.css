@@ -1,0 +1,33 @@
+/* [project]/src/app/plexmono_bc54b1ae.module.css [app-client] (css) */
+@font-face {
+  font-family: plexMono;
+  src: url("../media/IBMPlexMono_Regular-s.p.21pssk39-cz7l.ttf") format("truetype");
+  font-display: swap;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: plexMono;
+  src: url("../media/IBMPlexMono_Medium-s.p.0uwx8ff8z0o7f.ttf") format("truetype");
+  font-display: swap;
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: plexMono Fallback;
+  src: local(Arial);
+  ascent-override: 77.95%;
+  descent-override: 20.91%;
+  line-gap-override: 0.0%;
+  size-adjust: 131.49%;
+}
+
+.plexmono_bc54b1ae-module__CAmWZG__className {
+  font-family: plexMono, plexMono Fallback;
+}
+
+.plexmono_bc54b1ae-module__CAmWZG__variable {
+  --font-data: "plexMono", "plexMono Fallback";
+}
+
+/*# sourceMappingURL=src_app_plexmono_bc54b1ae_module_css_1igg3k2._.single.css.map*/

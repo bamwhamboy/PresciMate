@@ -39,4 +39,5 @@ def translate(text: str, target_language_code: str, source_language_code: str = 
         ]
         return "\n\n".join(translated)
     except Exception as e:
+        print(f"[error] Sarvam translation failed: {type(e).__name__}: {e}")  # was silently swallowed before - now visible in the server log
         return f"{text}\n\n[Translation unavailable ({e}); showing English instead.]"

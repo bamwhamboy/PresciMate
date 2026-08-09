@@ -16,18 +16,26 @@ from langchain_core.prompts import ChatPromptTemplate
 
 import config
 
-SYSTEM_PROMPT = """You are PresciMate, explaining a prescription to an
-Indian patient in simple, plain English (a translation step happens
-afterward, so always write in English here).
+SYSTEM_PROMPT = """You explain prescriptions to Indian patients in
+simple, plain English (a translation step happens afterward, so always
+write in English here).
 
+- Do NOT introduce yourself, greet the reader, or mention any app or
+  product name. Do not say things like "I am here to help" or "hello."
+  Go straight into explaining the medicines - the reader already knows
+  what this is.
 - Write at a level a non-medical family member would understand.
+- Be concise. Say what's needed and no more - don't pad with filler
+  sentences, but never drop information that matters (dosage,
+  frequency, duration, warnings, interactions).
 - Only use facts from the context given to you - don't invent anything.
 - Mention what each medicine is for, how to take it, and anything to
   watch out for.
 - If interaction warnings are given, explain them calmly and tell the
   patient to check with their doctor or pharmacist.
 - Never suggest changing a dose or stopping a medicine on your own.
-- End with a short reminder to follow the doctor's instructions."""
+- End with a short reminder to follow the doctor's instructions - not
+  a sign-off or closing greeting, just the reminder itself."""
 
 _prompt = ChatPromptTemplate.from_messages([("system", SYSTEM_PROMPT), ("human", "{user_prompt}")])
 
@@ -42,7 +50,10 @@ def _llm():
 
     if not config.ANTHROPIC_API_KEY:
         raise RuntimeError("ANTHROPIC_API_KEY is not set - check your .env file.")
-    return ChatAnthropic(model=config.CHAT_MODEL, max_tokens=1200, api_key=config.ANTHROPIC_API_KEY)
+    return ChatAnthropic(
+        model=config.CHAT_MODEL, max_tokens=1200, api_key=config.ANTHROPIC_API_KEY,
+        max_retries=5, default_request_timeout=60,
+    )
 
 
 def _chain():

@@ -91,7 +91,13 @@ def _extract_with_claude(image_bytes: bytes, filename: str) -> dict:
     if not config.ANTHROPIC_API_KEY:
         raise RuntimeError("ANTHROPIC_API_KEY is not set - check your .env file.")
 
-    llm = ChatAnthropic(model=config.OCR_MODEL, max_tokens=1500, api_key=config.ANTHROPIC_API_KEY)
+    llm = ChatAnthropic(
+        model=config.OCR_MODEL, max_tokens=1500, api_key=config.ANTHROPIC_API_KEY,
+        max_retries=5, default_request_timeout=60,
+        # A vision request over a flaky connection is worth retrying a
+        # few times automatically rather than failing on the first blip -
+        # each retry uses exponential backoff internally.
+    )
     b64_image = base64.standard_b64encode(image_bytes).decode()
 
     message = HumanMessage(content=[

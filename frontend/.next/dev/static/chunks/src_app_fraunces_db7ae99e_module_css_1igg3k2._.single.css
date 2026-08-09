@@ -1,0 +1,33 @@
+/* [project]/src/app/fraunces_db7ae99e.module.css [app-client] (css) */
+@font-face {
+  font-family: fraunces;
+  src: url("../media/Fraunces-s.p.24tivhgkz9rhh.ttf") format("truetype");
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: fraunces;
+  src: url("../media/Fraunces_Italic-s.p.1c29gks52nkd0.ttf") format("truetype");
+  font-display: swap;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: fraunces Fallback;
+  src: local(Arial);
+  ascent-override: 84.05%;
+  descent-override: 21.91%;
+  line-gap-override: 0.0%;
+  size-adjust: 116.36%;
+}
+
+.fraunces_db7ae99e-module__GwLXWa__className {
+  font-family: fraunces, fraunces Fallback;
+}
+
+.fraunces_db7ae99e-module__GwLXWa__variable {
+  --font-display: "fraunces", "fraunces Fallback";
+}
+
+/*# sourceMappingURL=src_app_fraunces_db7ae99e_module_css_1igg3k2._.single.css.map*/

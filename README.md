@@ -4,117 +4,117 @@ Upload a photo of a prescription, get it explained in plain language in
 your own language, download it as a PDF, and see your own past
 prescriptions (nobody else can see them).
 
+**One backend, one frontend**: a FastAPI backend (`api.py`) does all the
+actual work; a Next.js/TypeScript frontend (`frontend/`) is the only UI.
+(An earlier Streamlit version existed during development but has been
+removed - this is the current, single source of truth.)
+
 ## How it works
 
-1. **extraction.py** - a vision model reads the photo and returns
-   the medicines as structured JSON.
+1. **extraction.py** - a vision model (Claude or Gemini) reads the photo
+   and returns the medicines as structured JSON.
 2. **knowledge_base.py** - looks up each medicine in the Qdrant drug
    knowledge base (built by `build_knowledge_base.ipynb`), and checks for
    interactions by walking a small graph of known drug pairs (GraphRAG -
    "does A affect B" is a connections question, not a text-similarity one).
 3. **explain.py** - an LLM writes a plain-English explanation grounded in
    what was retrieved above.
-4. **sarvam_translator.py** - Sarvam translates that explanation into the
-   language you picked.
-5. **pdf_export.py** - turns the translated explanation into a downloadable
-   PDF, with the right Indic font embedded so it actually renders.
-6. Everything is stored per-user in Qdrant (`knowledge_base.save_prescription`),
-   tagged with your username, so your history tab only ever shows your
-   own prescriptions.
+4. **formatting.py** - translates the dosage/frequency/duration/
+   instructions fields and guarantees medicine names are reliably bolded
+   in the explanation, regardless of what the LLM/translator did with
+   markdown formatting.
+5. **sarvam_translator.py** - Sarvam translates the explanation and
+   medicine details into the language you picked. The medicine's
+   brand/generic name is deliberately never translated - it's what's
+   printed on the actual pill box, and translating it would make it
+   harder, not easier, to match.
+6. **pdf_export.py** - turns everything into a downloadable, branded PDF
+   with the right Indic font embedded so it actually renders.
+7. **pii.py** - strips the patient's name and redacts phone/email/ID
+   numbers before anything reaches an external LLM or gets stored.
+8. **hallucination_guard.py** - flags any dosage/frequency numbers in the
+   explanation that don't appear anywhere in the actual prescription or
+   retrieved reference material.
+9. **api.py** + **jwt_auth.py** - the FastAPI backend and its
+   token-based auth, tying all of the above together as HTTP endpoints
+   for the Next.js frontend.
 
 ## Choosing providers (`.env`)
 
-Both the OCR step (`extraction.py`) and the explanation-writing step
-(`explain.py`) can run on Claude or on Google Gemini's free tier, picked
-independently:
+Both the OCR step and the explanation-writing step can run on Claude or
+on Google Gemini's free tier, picked independently:
 
 ```
 OCR_PROVIDER=claude    # or gemini
 CHAT_PROVIDER=claude   # or gemini
 ```
 
-| Provider | Cost | Privacy | Quality |
-|---|---|---|---|
-| `claude` (default, both steps) | Pay-per-use | Standard API terms - not used to train models | OCR handwriting quality tested directly in this project |
-| `gemini` (both steps) | Free tier available | ⚠️ Free-tier traffic may be reviewed by Google to improve their products | Untested on real handwritten Indian prescriptions - try it and judge for yourself |
-
-**Set both to `gemini` and the only paid key left is Sarvam** (for
-translation) - everything else runs free. **Before you do that with real
-prescriptions**, think about the privacy tradeoff: Google's free-tier
-terms say unpaid traffic can be reviewed by humans and used to improve
-their products. That's a different privacy bar than most people would
-want for someone's actual health information. Gemini's *paid* tier
-doesn't have this clause, but then it isn't free anymore either.
-
-To use Gemini for either step, add to `.env`:
-```
-GEMINI_API_KEY=your-key-here
-```
-Get a key at **aistudio.google.com** - keep billing disabled on that
-Google Cloud project to stay on the free tier (enabling billing removes
-free-tier access for that project entirely). The same key works for
-both `OCR_PROVIDER=gemini` and `CHAT_PROVIDER=gemini`.
-
-No semantic routing, no separate structuring model, no guardrails module -
-kept deliberately simple. A short safety net (the disclaimer, and the
-LLM being told never to suggest changing a dose) is baked into the
-prompts in `explain.py` instead of a separate layer.
+**Before using Gemini with real prescriptions**: Google's free tier
+terms state that unpaid traffic can be reviewed by humans and used to
+improve their products - a real privacy tradeoff for actual medical
+information. Their paid tier doesn't have this clause.
 
 ## Setup
 
 1. **Build the knowledge base** (one-time) using `build_knowledge_base.ipynb`.
-   This creates `qdrant_data/` and `prescribot.db`.
+   Creates `qdrant_data/` and `prescribot.db`.
 
-2. **Install dependencies:**
+2. **Install backend dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **API keys:**
+3. **API keys** - copy `.env.example` to `.env` and fill in:
+   - `ANTHROPIC_API_KEY` (console.anthropic.com / platform.claude.com)
+   - `SARVAM_API_KEY` (dashboard.sarvam.ai)
+   - `GEMINI_API_KEY` (aistudio.google.com) - only if using `gemini` for
+     `OCR_PROVIDER` or `CHAT_PROVIDER`
+   - `JWT_SECRET` - generate with:
+     ```bash
+     python3 -c "import secrets; print(secrets.token_hex(32))"
+     ```
+
+4. **Add a login** - copy `users.example.yaml` to `users.yaml`, or just
+   use the Sign Up form in the app itself once it's running (it creates
+   `users.yaml` automatically).
+
+5. **Run the backend** (Terminal 1):
    ```bash
-   cp .env.example .env
-   # add ANTHROPIC_API_KEY (console.anthropic.com) - required unless
-   #   both OCR_PROVIDER and CHAT_PROVIDER are set to gemini
-   # add SARVAM_API_KEY   (dashboard.sarvam.ai) - always required
-   # add GEMINI_API_KEY   (aistudio.google.com) - only if using gemini
-   #   for either OCR_PROVIDER or CHAT_PROVIDER
+   uvicorn api:app --reload --port 8000
    ```
 
-4. **Run it:**
+6. **Run the frontend** (Terminal 2):
    ```bash
-   streamlit run app.py
+   cd frontend
+   cp .env.local.example .env.local
+   npm install
+   npm run dev
    ```
-   Use the **Sign up** tab on first launch to create your login - it
-   creates `users.yaml` automatically (bcrypt-hashed, gitignored) the
-   first time someone signs up. No manual hash generation needed.
+
+7. Open **http://localhost:3000**.
 
 ## Files
 
-| File | What it does |
+| File | Purpose |
 |---|---|
-| `config.py` | Settings, language codes, font paths, disclaimer |
-| `auth.py` | Login form + bcrypt password check |
-| `extraction.py` | Vision model reads the prescription (Claude or Gemini, see below) |
-| `knowledge_base.py` | Vector search, interaction graph, per-user history in Qdrant |
-| `explain.py` | Writes the explanation (English), Claude or Gemini |
+| `api.py` | FastAPI backend - all HTTP endpoints |
+| `jwt_auth.py` | Login/signup, JWT tokens |
+| `config.py` | Settings, language codes, font paths |
+| `extraction.py` | Vision OCR (Claude or Gemini) |
+| `knowledge_base.py` | Vector search + GraphRAG + per-user history in Qdrant |
+| `explain.py` | Writes the explanation (English) |
+| `formatting.py` | Medicine field translation + reliable bolding |
 | `sarvam_translator.py` | Translates into the chosen Indian language |
-| `pdf_export.py` | Builds the downloadable PDF with embedded Indic fonts |
-| `app.py` | The Streamlit app itself |
-| `fonts/` | Noto Sans fonts for each script (bundled so it works offline) |
+| `pdf_export.py` | Builds the downloadable PDF |
+| `pii.py` | Strips identifying details before external calls/storage |
+| `hallucination_guard.py` | Flags ungrounded numeric claims |
+| `frontend/` | The Next.js/TypeScript UI - the only frontend |
 
 ## A couple of honest limitations
 
-- Sign-up is open to anyone who reaches the app - there's no invite code
-  or admin approval step. That solves the "creating a login was a
-  blocker" problem, but it means access control is really just "you
-  have the URL," not "you were invited." Each user's *data* stays
-  private from other users regardless (that's enforced by the Qdrant
-  username filter, not by who can sign up) - but if you want the app
-  itself restricted to specific people, you'd want to add an invite
-  code or pre-approved username list before opening this up publicly.
-- Follow-up questions get a simple keyword check (`config.EMERGENCY_KEYWORDS`)
-  before anything goes to the LLM - if it matches, the question never
-  reaches Claude and a fixed safety message is shown instead. It's a
-  plain substring check, not a smart classifier, so it'll miss anything
-  phrased in a way the keyword list doesn't cover. Good enough as a
-  basic safety net, not a substitute for real triage.
+- Login is a YAML file + bcrypt - fine for a handful of real users, not
+  built for scale.
+- The hallucination guardrail is a heuristic on numbers specifically,
+  not full semantic fact-checking.
+- No eval suite yet measuring OCR/translation accuracy - would need a
+  labeled test set of real prescriptions first.

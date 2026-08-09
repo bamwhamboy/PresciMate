@@ -57,6 +57,17 @@ DENSE_MODEL = os.getenv("DENSE_MODEL", "BAAI/bge-small-en-v1.5")
 
 USERS_FILE = os.getenv("USERS_FILE", "users.yaml")
 
+# Used to sign JWTs issued by the FastAPI backend (api.py) for the
+# Next.js frontend - separate from the Streamlit session auth in auth.py.
+JWT_SECRET = os.getenv("JWT_SECRET", "")
+
+# Comma-separated list of origins the frontend is allowed to call this
+# API from. Defaults to local dev only - add your real Vercel URL here
+# once deployed (e.g. "http://localhost:3000,https://prescimate.vercel.app").
+# Mixing a wildcard "*" with allow_credentials=True (which this API uses
+# for the Authorization header) isn't safe - be explicit instead.
+CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
+
 # Language name -> Sarvam's language code, and the local font file used to
 # render that language in the PDF (reportlab's built-in fonts don't have
 # Indic glyphs, so each script needs its own Noto font registered).

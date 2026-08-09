@@ -1,4 +1,3 @@
-streamlit>=1.35
 anthropic>=0.40
 langchain-core>=0.3
 langchain-anthropic>=0.3
@@ -8,7 +7,21 @@ langchain-qdrant>=0.2
 langchain-text-splitters>=0.3
 sarvamai>=0.1
 qdrant-client>=1.9
-sentence-transformers>=3.0
+# Pinned rather than left open-ended: newer sentence-transformers releases
+# pull in a transformers version that requires torch>=2.4, but PyTorch
+# stopped building wheels for Intel Macs after 2.2.2 - that combination
+# is simply uninstallable there. These versions are confirmed compatible
+# with torch>=1.11, so this works on Intel Macs, Apple Silicon, and Linux.
+# torch itself is deliberately NOT pinned here - pip will pick whatever
+# version your platform actually has wheels for (2.2.2 on Intel Mac,
+# newer elsewhere), and both pins below are compatible with any of those.
+transformers==4.48.0
+sentence-transformers==3.0.1
+# numpy 2.x causes an ABI mismatch warning (and potential crash) against
+# torch 2.2.2, which was built against numpy 1.x - pinning below 2.0
+# avoids that. Neither transformers nor sentence-transformers above
+# require numpy 2.x, so this is safe regardless of your torch version.
+numpy==1.26.4
 networkx>=3.3
 reportlab>=4.0
 bcrypt>=4.1

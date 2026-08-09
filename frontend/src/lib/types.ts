@@ -29,6 +29,7 @@ export interface ExplainResponse {
   explanation: string;
   interactions: Interaction[];
   grounding: Grounding;
+  translated_medicines: Medicine[];
 }
 
 export interface AskResponse {
