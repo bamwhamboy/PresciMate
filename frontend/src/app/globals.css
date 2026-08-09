@@ -1,0 +1,65 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+:root {
+  --color-paper: #fbf7f0;
+  --color-ink: #1f2a24;
+  --color-pharmacy: #1c6e5c;
+  --color-pharmacy-dark: #124a3d;
+  --color-marigold: #e8912d;
+  --color-clay: #c1502e;
+  --color-mist: #e4ded2;
+  --color-mist-dark: #d3cabb;
+}
+
+@theme inline {
+  --color-paper: var(--color-paper);
+  --color-ink: var(--color-ink);
+  --color-pharmacy: var(--color-pharmacy);
+  --color-pharmacy-dark: var(--color-pharmacy-dark);
+  --color-marigold: var(--color-marigold);
+  --color-clay: var(--color-clay);
+  --color-mist: var(--color-mist);
+  --color-mist-dark: var(--color-mist-dark);
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-data: var(--font-data);
+}
+
+body {
+  font-family: var(--font-body), sans-serif;
+}
+
+/* Signature element: a torn/perforated top edge on cards, evoking a
+   sheet torn off a prescription pad. Used with restraint - card headers
+   only, not on every box in the UI. */
+.torn-edge {
+  position: relative;
+}
+.torn-edge::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background-image: linear-gradient(
+    135deg,
+    var(--color-paper) 25%,
+    transparent 25%
+  ),
+    linear-gradient(-135deg, var(--color-paper) 25%, transparent 25%);
+  background-size: 14px 14px;
+  background-position: top left;
+  background-repeat: repeat-x;
+}
+
+/* Respect reduced-motion preferences for anything we animate */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

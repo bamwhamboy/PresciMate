@@ -14,3 +14,10 @@ reportlab>=4.0
 bcrypt>=4.1
 pyyaml>=6.0
 python-dotenv>=1.0
+
+# For the FastAPI backend (api.py) - only needed if you're running the
+# new Next.js frontend, not required for the Streamlit app alone
+fastapi>=0.115
+uvicorn>=0.32
+python-jose[cryptography]>=3.3
+python-multipart>=0.0.9
