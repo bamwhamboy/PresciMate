@@ -8,8 +8,9 @@ is purely a new way to reach it.
 Run with: uvicorn api:app --reload --port 8000
 """
 import io
+from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Header
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Header, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -138,14 +139,26 @@ class ExplainRequest(BaseModel):
 
 
 @app.post("/api/prescriptions/explain")
-def explain_prescription(req: ExplainRequest, user: dict = Depends(get_current_user)):
+def explain_prescription(
+    req: ExplainRequest,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(get_current_user),
+):
     if req.language not in config.LANGUAGES:
         raise HTTPException(status_code=400, detail=f"Unknown language: {req.language}")
     language_code = config.LANGUAGES[req.language]["code"]
 
     try:
         drug_names = [m["name"] for m in req.medicines]
-        drug_context = "\n\n".join(kb.search_drug_knowledge(name) for name in drug_names)
+
+        # One Qdrant query per medicine, run in parallel instead of one
+        # at a time - this and the two translation calls below were the
+        # remaining sequential bottlenecks after the per-field
+        # translation calls were already parallelized.
+        with ThreadPoolExecutor(max_workers=min(8, len(drug_names) or 1)) as pool:
+            contexts = list(pool.map(kb.search_drug_knowledge, drug_names))
+        drug_context = "\n\n".join(contexts)
+
         interactions = kb.check_interactions(drug_names)
 
         # PII guardrail - same as the Streamlit app: strip identifying
@@ -155,13 +168,16 @@ def explain_prescription(req: ExplainRequest, user: dict = Depends(get_current_u
 
         english_explanation = explain.write_explanation(safe_medicines, drug_context, interactions)
         grounding = hallucination_guard.check_grounding(english_explanation, safe_medicines, drug_context)
-        final_explanation = sarvam_translator.translate(english_explanation, language_code)
 
-        # Translate dosage/frequency/duration/instructions and add the
-        # transliterated name (name_local) for on-screen display - the
-        # untranslated "name" field is kept too, for matching against
-        # the physical pill box.
-        translated_medicines = formatting.translate_medicine_fields(req.medicines, language_code)
+        # Translating the explanation prose and translating the medicine
+        # fields are fully independent of each other - running them one
+        # after another was wasting the wall-clock time of whichever one
+        # happened to go first, for no reason.
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            explanation_future = pool.submit(sarvam_translator.translate, english_explanation, language_code)
+            medicines_future = pool.submit(formatting.translate_medicine_fields, req.medicines, language_code)
+            final_explanation = explanation_future.result()
+            translated_medicines = medicines_future.result()
 
         # Swap the medicine name for its transliterated + bolded form
         # inside the explanation text itself, so it reads naturally in
@@ -169,7 +185,13 @@ def explain_prescription(req: ExplainRequest, user: dict = Depends(get_current_u
         # mid-sentence.
         final_explanation = formatting.apply_transliterated_names(final_explanation, translated_medicines)
 
-        kb.save_prescription(user["username"], safe_medicines, final_explanation, req.language)
+        # Saving to history doesn't need to finish before the user sees
+        # their explanation - defer it to run after the response is
+        # already sent instead of making them wait on a database write
+        # they don't actually need to see complete.
+        background_tasks.add_task(
+            kb.save_prescription, user["username"], safe_medicines, final_explanation, req.language
+        )
     except Exception as e:
         raise HTTPException(
             status_code=502,
