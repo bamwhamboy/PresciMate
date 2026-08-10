@@ -1,3 +1,4 @@
+streamlit>=1.35
 anthropic>=0.40
 langchain-core>=0.3
 langchain-anthropic>=0.3
@@ -6,7 +7,14 @@ langchain-huggingface>=0.1
 langchain-qdrant>=0.2
 langchain-text-splitters>=0.3
 sarvamai>=0.1
-qdrant-client>=1.9
+# Pinned exactly, not left open-ended: qdrant-client's local/embedded
+# storage format is tied to the specific client version. An open range
+# (">=1.9") let this app's own machine and Railway's build independently
+# resolve to different actual versions at different times, and a newer
+# client trying to open data written by an older one caused a Pydantic
+# schema mismatch on collection creation. Pinning guarantees Railway
+# installs the exact version this qdrant_data/ was actually built with.
+qdrant-client==1.19.0
 # Pinned rather than left open-ended: newer sentence-transformers releases
 # pull in a transformers version that requires torch>=2.4, but PyTorch
 # stopped building wheels for Intel Macs after 2.2.2 - that combination
