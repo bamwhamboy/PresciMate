@@ -25,11 +25,18 @@ qdrant-client==1.19.0
 # newer elsewhere), and both pins below are compatible with any of those.
 transformers==4.48.0
 sentence-transformers==3.0.1
-# numpy 2.x causes an ABI mismatch warning (and potential crash) against
-# torch 2.2.2, which was built against numpy 1.x - pinning below 2.0
-# avoids that. Neither transformers nor sentence-transformers above
-# require numpy 2.x, so this is safe regardless of your torch version.
-numpy==1.26.4
+# numpy needs to differ by Python version, not just by platform:
+# - Python < 3.12 (e.g. this app's Intel Mac dev setup on 3.11): torch
+#   2.2.2 is the newest available there and was built against numpy 1.x,
+#   so numpy 2.x causes an ABI mismatch warning/crash risk.
+# - Python >= 3.12 (e.g. Railway, which builds on 3.13): qdrant-client
+#   1.19.0 explicitly requires numpy>=2.1.0 on 3.13, and the torch
+#   version available there is recent enough to support numpy 2.x
+#   properly, so there's no ABI conflict on that side.
+# One requirements.txt, two conditional pins - pip picks the right one
+# automatically based on whichever Python is actually running the install.
+numpy==1.26.4; python_version < "3.12"
+numpy>=2.1.0; python_version >= "3.12"
 networkx>=3.3
 reportlab>=4.0
 bcrypt>=4.1
