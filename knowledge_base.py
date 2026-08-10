@@ -16,6 +16,7 @@ Everything to do with retrieval and storage lives here:
                              ever returns their own data
 """
 import sqlite3
+import time
 import uuid
 from datetime import datetime
 from functools import lru_cache
@@ -37,7 +38,28 @@ def _embeddings() -> HuggingFaceEmbeddings:
 
 @lru_cache(maxsize=1)
 def _client() -> QdrantClient:
-    return QdrantClient(path=config.QDRANT_PATH)
+    if config.QDRANT_URL:
+        return QdrantClient(url=config.QDRANT_URL, api_key=config.QDRANT_API_KEY or None)
+
+    # Local file-based storage only allows one process to hold it at a
+    # time. During a Railway redeploy, the old container briefly
+    # overlaps with the new one before actually shutting down - if this
+    # new process starts up during that window, the lock genuinely is
+    # still held by something that's about to go away, not stuck
+    # forever. Retrying with a short wait lets that resolve itself
+    # instead of crashing on the very first attempt.
+    last_error = None
+    for attempt in range(5):
+        try:
+            return QdrantClient(path=config.QDRANT_PATH)
+        except RuntimeError as e:
+            if "already accessed by another instance" not in str(e):
+                raise
+            last_error = e
+            wait = 2 * (attempt + 1)
+            print(f"[warn] Qdrant storage locked (attempt {attempt + 1}/5) - retrying in {wait}s...")
+            time.sleep(wait)
+    raise last_error
 
 
 # ---------------------------------------------------------------- #
