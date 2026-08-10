@@ -41,6 +41,14 @@ CHAT_MODEL = _get_secret("CHAT_MODEL", "claude-sonnet-5")  # used when CHAT_PROV
 
 # Knowledge base paths - must match what build_knowledge_base.ipynb created
 QDRANT_PATH = os.getenv("QDRANT_PATH", "./qdrant_data")
+# If set, connects to a real Qdrant server (e.g. Qdrant Cloud) instead of
+# local file storage. Local mode only allows ONE process to touch the
+# storage at a time - fine for local development, but a real server is
+# what Qdrant's own docs recommend the moment more than one process
+# might access it, which is unavoidable during a normal container
+# redeploy. QDRANT_PATH above is ignored when this is set.
+QDRANT_URL = os.getenv("QDRANT_URL", "")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", "")
 DRUG_COLLECTION = os.getenv("DRUG_COLLECTION", "drug_knowledge")   # built by the notebook
 USER_COLLECTION = os.getenv("USER_COLLECTION", "user_prescriptions")  # created by this app
 DB_PATH = os.getenv("DB_PATH", "prescribot.db")  # matches build_knowledge_base.ipynb's DB_PATH
